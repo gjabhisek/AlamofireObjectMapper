@@ -105,16 +105,18 @@ extension DataRequest {
         
         return MappableResponseSerializer(keyPath, context: context, serializeCallback: {
             request, response, data, error in
+            let failureReason = "ObjectMapper failed to serialize response."
             
-            let JSONObject = processResponse(request: request, response: response, data: data, keyPath: keyPath)
-            
-            if let JSONObject = JSONObject,
-                let parsedObject = (try? Mapper<T>(context: context, shouldIncludeNilValues: false).map(JSONObject: JSONObject)){
-                return parsedObject
-            } else {
-                let failureReason = "ObjectMapper failed to serialize response."
-                throw AFError.responseSerializationFailed(reason: .decodingFailed(error: newError(.dataSerializationFailed, failureReason: failureReason)))
+            if let JSONObject = processResponse(request: request, response: response, data: data, keyPath: keyPath){
+                do {
+                    let parsedObject = try Mapper<T>(context: context, shouldIncludeNilValues: false).map(JSONObject: JSONObject)
+                    return parsedObject
+                } catch {
+                    throw AFError.responseSerializationFailed(reason: .decodingFailed(error: newError(.dataSerializationFailed, failureReason: failureReason)))
+                }
             }
+            
+            throw AFError.responseSerializationFailed(reason: .decodingFailed(error: newError(.dataSerializationFailed, failureReason: failureReason)))
         })
     }
     
@@ -163,14 +165,16 @@ extension DataRequest {
         return MappableArrayResponseSerializer(keyPath, context: context, serializeCallback: {
              request, response, data, error in
             
+            let failureReason = "ObjectMapper failed to serialize response."
             if let JSONObject = processResponse(request: request, response: response, data: data, keyPath: keyPath){
-                
-                if let parsedObject = try? Mapper<T>(context: context, shouldIncludeNilValues: false).mapArray(JSONObject: JSONObject){
+                do {
+                    let parsedObject = try Mapper<T>(context: context, shouldIncludeNilValues: false).mapArray(JSONObject: JSONObject)
                     return parsedObject
+                } catch {
+                    throw AFError.responseSerializationFailed(reason: .decodingFailed(error: newError(.dataSerializationFailed, failureReason: failureReason)))
                 }
             }
             
-            let failureReason = "ObjectMapper failed to serialize response."
             throw AFError.responseSerializationFailed(reason: .decodingFailed(error: newError(.dataSerializationFailed, failureReason: failureReason)))
         })
     }
